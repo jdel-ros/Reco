@@ -146,12 +146,15 @@ const inCard = computed(() => t.value > 0.3 && t.value < 0.7)
 watch(inCard, (v) => { if (!v) active.value = null })
 
 const links = computed(() => [
-	{ key: 'spotify', icon: 'simple-icons:spotify', url: current.value?.spotify_url },
-	{ key: 'deezer', icon: 'simple-icons:deezer', url: current.value?.deezer_url },
 	{ key: 'apple', icon: 'simple-icons:applemusic', url: current.value?.apple_url },
+	{ key: 'deezer', icon: 'simple-icons:deezer', url: current.value?.deezer_url },
+	{ key: 'spotify', icon: 'simple-icons:spotify', url: current.value?.spotify_url },
 ].filter((l) => l.url))
 
 function embed(key, url) {
+	if (key === 'apple') {
+		return url.includes('music.apple.com') ? url.replace('music.apple.com', 'embed.music.apple.com') : null
+	}
 	if (key === 'spotify') {
 		const m = url.match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(track|album|playlist|artist)\/([A-Za-z0-9]+)/)
 		return m ? `https://open.spotify.com/embed/${m[1]}/${m[2]}` : null
@@ -159,9 +162,6 @@ function embed(key, url) {
 	if (key === 'deezer') {
 		const m = url.match(/deezer\.com\/(?:[a-z]{2}\/)?(track|album|playlist)\/(\d+)/)
 		return m ? `https://widget.deezer.com/widget/dark/${m[1]}/${m[2]}` : null
-	}
-	if (key === 'apple') {
-		return url.includes('music.apple.com') ? url.replace('music.apple.com', 'embed.music.apple.com') : null
 	}
 }
 
@@ -199,8 +199,6 @@ watch(frontReco, (r) => {
 			<UButton icon="i-lucide-menu" color="neutral" variant="subtle" aria-label="Menu"
 				class="fixed top-4 right-4 z-10" @click="menuOpen = true" />
 		</div>
-		{{ console.log(isMobile) }}
-		{{ console.log(menuOpen) }}
 		<p v-if="!(isMobile && menuOpen)" class="counter">{{ idx + 1 }} / {{ recos.length }}</p>
 		<USlideover v-model:open="menuOpen" side="right" title="Les recos" description="Choisis une reco">
 			<template #body>
