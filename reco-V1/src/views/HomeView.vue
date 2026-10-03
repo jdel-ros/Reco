@@ -15,7 +15,9 @@ const menuOpen = ref(false)
 const shuffling = ref(false)
 const rollCover = ref(null)
 const search = ref('')
+const isMobile = ref(false)
 let linkReady = false
+let mq
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 const idx = computed(() => Math.min(Math.floor(progress.value), Math.max(recos.value.length - 1, 0)))
@@ -38,6 +40,9 @@ onMounted(async () => {
 	await nextTick()
 	if (i > 0) window.scrollTo({ top: i * window.innerHeight * PER, behavior: 'instant' })
 	onScroll()
+	mq = window.matchMedia('(max-width: 640px)')
+	isMobile.value = mq.matches
+	mq.addEventListener('change', updateMobile)
 	linkReady = true
 })
 
@@ -47,6 +52,10 @@ watch(idx, () => {
 	clearTimeout(urlTimer)
 	urlTimer = setTimeout(() => router.replace({ query: { reco: current.value.id } }), 400)
 })
+
+function updateMobile(e) {
+	isMobile.value = e.matches
+}
 
 const copied = ref(false)
 
@@ -60,6 +69,7 @@ async function copyLink() {
 onUnmounted(() => {
 	window.removeEventListener('scroll', onScroll)
 	window.removeEventListener('keydown', onKey)
+	mq?.removeEventListener('change', updateMobile)
 	clearTimeout(bgTimer)
 	clearTimeout(urlTimer)
 })
@@ -189,7 +199,9 @@ watch(frontReco, (r) => {
 			<UButton icon="i-lucide-menu" color="neutral" variant="subtle" aria-label="Menu"
 				class="fixed top-4 right-4 z-10" @click="menuOpen = true" />
 		</div>
-		<p class="counter">{{ idx + 1 }} / {{ recos.length }}</p>
+		{{ console.log(isMobile) }}
+		{{ console.log(menuOpen) }}
+		<p v-if="!(isMobile && menuOpen)" class="counter">{{ idx + 1 }} / {{ recos.length }}</p>
 		<USlideover v-model:open="menuOpen" side="right" title="Les recos" description="Choisis une reco">
 			<template #body>
 				<UInput v-model="search" icon="i-lucide-search" placeholder="Titre ou artiste" class="w-full mb-3" />

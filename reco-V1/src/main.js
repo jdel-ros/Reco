@@ -15,4 +15,6 @@ app.use(createPinia())
 app.use(router)
 app.use(ui)
 
+document.documentElement.classList.add('dark')
+localStorage.setItem('vueuse-color-scheme', 'dark')
 app.mount('#app')
