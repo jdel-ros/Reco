@@ -53,3 +53,24 @@ body {
     background: var(--accent);
     color: var(--bg);
 }
+
+@property --bg-a {
+	syntax: '<color>';
+	inherits: false;
+	initial-value: #141210;
+}
+@property --bg-b {
+	syntax: '<color>';
+	inherits: false;
+	initial-value: #141210;
+}
+
+@layer base {
+	button:not(:disabled),
+	[role="button"]:not(:disabled),
+	summary,
+	select,
+	input[type="file"] {
+		cursor: pointer;
+	}
+}

@@ -1,14 +1,26 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase'
+import { getPalette } from '@/lib/palette'
 
+const route = useRoute()
+const router = useRouter()
 const PER = 2 // hauteur de scroll par reco, en écrans
-
+const bg = ref({ a: '#141210', b: '#141210' })
 const recos = ref([])
 const progress = ref(0)
 const active = ref(null)
 const menuOpen = ref(false)
+const shuffling = ref(false)
+const rollCover = ref(null)
+const search = ref('')
+let linkReady = false
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const idx = computed(() => Math.min(Math.floor(progress.value), Math.max(recos.value.length - 1, 0)))
 
+let bgTimer
 let ticking = false
 
 onMounted(async () => {
@@ -17,10 +29,61 @@ onMounted(async () => {
 		.select('*')
 		.order('published_at', { ascending: false })
 	recos.value = data ?? []
+	recos.value.forEach((r) => { if (r.cover_url) new Image().src = r.cover_url })
+
 	window.addEventListener('scroll', onScroll, { passive: true })
+	window.addEventListener('keydown', onKey)
+
+	const i = recos.value.findIndex((r) => r.id === route.query.reco)
+	await nextTick()
+	if (i > 0) window.scrollTo({ top: i * window.innerHeight * PER, behavior: 'instant' })
 	onScroll()
+	linkReady = true
 })
-onUnmounted(() => window.removeEventListener('scroll', onScroll))
+
+let urlTimer
+watch(idx, () => {
+	if (!linkReady || !current.value) return
+	clearTimeout(urlTimer)
+	urlTimer = setTimeout(() => router.replace({ query: { reco: current.value.id } }), 400)
+})
+
+const copied = ref(false)
+
+async function copyLink() {
+	const url = `${location.origin}${route.path}?reco=${current.value.id}`
+	await navigator.clipboard.writeText(url)
+	copied.value = true
+	setTimeout(() => (copied.value = false), 1500)
+}
+
+onUnmounted(() => {
+	window.removeEventListener('scroll', onScroll)
+	window.removeEventListener('keydown', onKey)
+	clearTimeout(bgTimer)
+	clearTimeout(urlTimer)
+})
+
+async function randomReco() {
+	if (shuffling.value || recos.value.length < 2) return
+	let i
+	do {
+		i = Math.floor(Math.random() * recos.value.length)
+	} while (i === idx.value)
+
+	window.scrollTo({ top: i * window.innerHeight * PER, behavior: 'instant' })
+	shuffling.value = true
+
+	let delay = 60
+	while (delay < 320) {
+		rollCover.value = recos.value[Math.floor(Math.random() * recos.value.length)]
+		await sleep(delay)
+		delay *= 1.25
+	}
+	rollCover.value = recos.value[i]
+	await sleep(250)
+	shuffling.value = false
+}
 
 function onScroll() {
 	if (ticking) return
@@ -37,9 +100,13 @@ function goTo(i) {
 	search.value = ''
 }
 
-const search = ref('')
+function onKey(e) {
+	if (menuOpen.value || shuffling.value) return
+	if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return
+	if (e.key === 'ArrowRight' && idx.value < recos.value.length - 1) goTo(idx.value + 1)
+	if (e.key === 'ArrowLeft' && idx.value > 0) goTo(idx.value - 1)
+}
 
-const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 const filtered = computed(() => {
 	const q = norm(search.value.trim())
@@ -50,7 +117,6 @@ const filtered = computed(() => {
 
 const ease = (x) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2)
 
-const idx = computed(() => Math.min(Math.floor(progress.value), Math.max(recos.value.length - 1, 0)))
 const t = computed(() => progress.value - idx.value)
 
 const flip = computed(() => {
@@ -102,12 +168,27 @@ function toggle(key) {
 function flipToCard() {
 	window.scrollTo({ top: (idx.value + 0.4) * window.innerHeight * PER, behavior: 'smooth' })
 }
+
+watch(frontReco, (r) => {
+	clearTimeout(bgTimer)
+	bgTimer = setTimeout(async () => {
+		const p = await getPalette(r?.cover_url)
+		if (p) bg.value = p
+	}, 300)
+}, { immediate: true })
+
 </script>
 
 <template>
 	<div class="scroller" :style="{ height: scrollerHeight }">
-		<UButton v-if="menuOpen === false" icon="i-lucide-menu" color="neutral" variant="subtle" aria-label="Menu"
-			class="fixed top-4 right-4 z-10" @click="menuOpen = true" />
+		<div v-if="menuOpen === false">
+			<UButton icon="i-lucide-shuffle" color="neutral" variant="subtle" aria-label="Reco aléatoire"
+				class="fixed top-4 right-16 z-10" :ui="{ leadingIcon: shuffling ? 'animate-spin' : '' }" @click="randomReco" />
+			<UButton :icon="copied ? 'i-lucide-check' : 'i-lucide-link'" color="neutral" variant="subtle"
+				aria-label="Copier le lien" class="fixed top-4 right-28 z-10" @click="copyLink" />
+			<UButton icon="i-lucide-menu" color="neutral" variant="subtle" aria-label="Menu"
+				class="fixed top-4 right-4 z-10" @click="menuOpen = true" />
+		</div>
 		<USlideover v-model:open="menuOpen" side="right" title="Les recos" description="Choisis une reco">
 			<template #body>
 				<UInput v-model="search" icon="i-lucide-search" placeholder="Titre ou artiste" class="w-full mb-3" />
@@ -122,10 +203,10 @@ function flipToCard() {
 				<p v-if="!filtered.length" class="text-muted">Aucune reco trouvée.</p>
 			</template>
 		</USlideover>
-		<div v-if="current" class="stage">
+		<div v-if="current" class="stage" :style="{ '--bg-a': bg.a, '--bg-b': bg.b }">
 			<div class="card" :style="{ transform: `scale(${scale}) rotateY(${flip}deg)` }">
 				<div class="face front" @click="flipToCard">
-					<img :src="frontReco.cover_url" :alt="frontReco.title" />
+					<img :src="(shuffling ? rollCover : frontReco).cover_url" :alt="frontReco.title" :class="{ rolling: shuffling }" />				
 				</div>
 				<div class="face back">
 					<img v-if="current.cover_url" :src="current.cover_url" :alt="current.title" class="thumb" />
@@ -146,6 +227,7 @@ function flipToCard() {
 				</div>
 			</div>
 			<p v-if="progress < 0.05" class="hint">Scroll ↓</p>
+			<p class="counter">{{ idx + 1 }} / {{ recos.length }}</p>
 		</div>
 	</div>
 </template>
@@ -159,6 +241,8 @@ function flipToCard() {
 	place-items: center;
 	perspective: 1400px;
 	overflow: hidden;
+	background: radial-gradient(circle at 50% 40%, var(--bg-a), var(--bg-b) 85%);
+	transition: --bg-a 1.5s ease, --bg-b 1.5s ease;
 }
 
 .card {
@@ -189,6 +273,11 @@ function flipToCard() {
 	object-fit: cover;
 	border-radius: 12px;
 	box-shadow: 0 20px 60px rgb(0 0 0 / 0.6);
+	transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s;
+}
+.front img.rolling {
+	filter: blur(3px);
+	transform: scale(0.96);
 }
 
 .back {
@@ -220,7 +309,7 @@ function flipToCard() {
 
 .hint {
 	position: absolute;
-	bottom: 2rem;
+	bottom: 4rem;
 	color: var(--text-muted);
 }
 
@@ -260,5 +349,13 @@ function flipToCard() {
 .player-leave-to {
 	opacity: 0;
 	transform: translateY(12px) scale(0.97);
+}
+
+.counter {
+	position: absolute;
+	bottom: 1.5rem;
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.1em;
 }
 </style>
