@@ -189,6 +189,7 @@ watch(frontReco, (r) => {
 			<UButton icon="i-lucide-menu" color="neutral" variant="subtle" aria-label="Menu"
 				class="fixed top-4 right-4 z-10" @click="menuOpen = true" />
 		</div>
+		<p class="counter">{{ idx + 1 }} / {{ recos.length }}</p>
 		<USlideover v-model:open="menuOpen" side="right" title="Les recos" description="Choisis une reco">
 			<template #body>
 				<UInput v-model="search" icon="i-lucide-search" placeholder="Titre ou artiste" class="w-full mb-3" />
@@ -227,7 +228,6 @@ watch(frontReco, (r) => {
 				</div>
 			</div>
 			<p v-if="progress < 0.05" class="hint">Scroll ↓</p>
-			<p class="counter">{{ idx + 1 }} / {{ recos.length }}</p>
 		</div>
 	</div>
 </template>
@@ -352,8 +352,10 @@ watch(frontReco, (r) => {
 }
 
 .counter {
-	position: absolute;
-	bottom: 1.5rem;
+	position: fixed;
+	top: 1.25rem;
+	left: 1rem;
+	z-index: 10;
 	color: var(--text-muted);
 	font-variant-numeric: tabular-nums;
 	letter-spacing: 0.1em;

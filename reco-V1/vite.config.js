@@ -11,6 +11,7 @@ export default defineConfig({
     vue(),
 	ui({
 		ui: {
+			colorMode: false,
 			colors: {
 				primary: 'brand',
 				neutral: 'zinc',
