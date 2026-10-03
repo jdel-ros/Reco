@@ -1,0 +1,55 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme static {
+    --color-brand-50: #fbf8f2;
+    --color-brand-100: #f4ecdd;
+    --color-brand-200: #e9d9bc;
+    --color-brand-300: #dcc194;
+    --color-brand-400: #d2ac73;
+    --color-brand-500: #c4965a;
+    --color-brand-600: #a97b47;
+    --color-brand-700: #8a6139;
+    --color-brand-800: #705033;
+    --color-brand-900: #5d442d;
+    --color-brand-950: #33231a;
+
+	--font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Fraunces Variable', ui-serif, Georgia, serif;
+}
+
+:root {
+    --bg: #141210;
+    --surface: #1e1b18;
+    --surface-2: #27231f;
+    --border: #35302a;
+    --text: #efe6d6;
+    --text-muted: #a89f90;
+    --accent: #d2ac73;
+    --accent-hover: #e0be8a;
+    --sage: #8f9779;
+}
+
+:root.dark {
+    --ui-bg: #141210;
+    --ui-bg-muted: #1e1b18;
+    --ui-bg-elevated: #1e1b18;
+    --ui-bg-accented: #27231f;
+    --ui-border: #35302a;
+    --ui-border-muted: #2a2621;
+    --ui-border-accented: #4a4339;
+    --ui-text: #efe6d6;
+    --ui-text-muted: #a89f90;
+    --ui-text-dimmed: #7a7266;
+    --ui-text-highlighted: #f6efe2;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+}
+
+::selection {
+    background: var(--accent);
+    color: var(--bg);
+}
