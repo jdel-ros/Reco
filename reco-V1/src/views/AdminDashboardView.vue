@@ -81,12 +81,9 @@ async function home() {
 			</div>
 		</div>
 		<p>{{ message }}</p>
-
 		<RecoModal v-model:open="modalOpen" :reco="selected" @saved="loadRecos" />
-
 		<UInput v-model="search" icon="i-lucide-search" placeholder="Rechercher un titre ou un artiste"
 			class="w-full sm:w-1/3 mx-auto mb-4 block" />
-
 		<div class="div-card">
 			<UCard v-for="r in filtered" :key="r.id" class="card-reco"
 				:ui="{ root: 'flex flex-col h-full', body: 'flex-1 pb-3! sm:pb-3!' }">

@@ -7,7 +7,7 @@ const props = defineProps({ reco: Object })
 const emit = defineEmits(['saved'])
 const open = defineModel('open')
 
-const emptyForm = () => ({ title: '', artist: '', description: '', type: 'track', player_url: '' })
+const emptyForm = () => ({ title: '', artist: '', description: '', type: 'track', spotify_url: '', deezer_url: '', apple_url: '' })
 const itemsType = [
 	{ label: 'Musique', value: 'track' },
 	{ label: 'Album', value: 'album' },
@@ -31,7 +31,9 @@ watch(open, (isOpen) => {
 			artist: r.artist,
 			description: r.description ?? '',
 			type: r.type,
-			player_url: r.player_url ?? '',
+			spotify_url: r.spotify_url ?? '',
+			deezer_url: r.deezer_url ?? '',
+			apple_url: r.apple_url ?? '',
 		}
 		currentCover.value = r.cover_url
 	} else {
@@ -91,8 +93,9 @@ async function save() {
 				<FloatInput v-model="form.artist" label="Artiste" class="input" size="md" />
 				<FloatTextArea v-model="form.description" label="Description" class="input input-area" size="md" />
 				<USelect v-model="form.type" :items="itemsType" size="md" />
-				<FloatInput v-model="form.player_url" label="Lien lecteur" class="input input-link" size="md" />
-
+				<FloatInput v-model="form.spotify_url" label="Lien Spotify" class="input input-link" size="md" />
+				<FloatInput v-model="form.deezer_url" label="Lien Deezer" class="input" size="md" />
+				<FloatInput v-model="form.apple_url" label="Lien Apple Music" class="input" size="md" />
 				<div class="div-cover">
 					<img v-if="currentCover" :src="currentCover" alt="cover actuelle" width="80" class="cover" />
 					<UFileUpload v-model="file" variant="button" accept="image/*" class="w-1/3" />
