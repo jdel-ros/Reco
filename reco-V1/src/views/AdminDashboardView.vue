@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase'
 import { coverPath } from '@/lib/covers'
 import { useAuthStore } from '@/stores/auth'
+import GenresModal from '@/components/GenresModal.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -13,6 +14,7 @@ const message = ref('')
 const modalOpen = ref(false)
 const selected = ref(null)
 const search = ref('')
+const genresOpen = ref(false)
 
 const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
@@ -74,12 +76,16 @@ async function home() {
 <template>
 	<div class="mt-2 mb-4">
 		<div class="div-header">
-			<UButton label="Ajouter une reco" @click="openAdd" />
-			<div class="div-deco-home">
+			<div class="div-header-left">
+				<UButton label="Ajouter une reco" @click="openAdd" class="mr-2" />
+				<UButton label="Gérer les styles" color="neutral" variant="subtle" @click="genresOpen = true" />
+			</div>
+			<div class="div-header-right">
 				<UButton label="Home" color="neutral" variant="subtle" @click="home" class="mr-2"/>
 				<UButton label="Logout" color="neutral" variant="subtle" @click="logout" />
 			</div>
 		</div>
+		<GenresModal v-model:open="genresOpen" />
 		<p>{{ message }}</p>
 		<RecoModal v-model:open="modalOpen" :reco="selected" @saved="loadRecos" />
 		<UInput v-model="search" icon="i-lucide-search" placeholder="Rechercher un titre ou un artiste"
@@ -108,7 +114,7 @@ async function home() {
 	justify-content: space-between;
 	margin: 1em 1em 3em 1em;
 }
-.div-deco-home {
+.div-header-left, .div-header-right {
 	display: inline-flex;
 }
 .title {

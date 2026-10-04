@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     FloatInput: typeof import('./src/components/FloatInput.vue')['default']
     FloatTextArea: typeof import('./src/components/FloatTextArea.vue')['default']
+    GenresModal: typeof import('./src/components/GenresModal.vue')['default']
     RecoModal: typeof import('./src/components/RecoModal.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
@@ -24,6 +25,7 @@ declare module 'vue' {
     UInput: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Input.vue')['default']
     UModal: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Modal.vue')['default']
     USelect: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Select.vue')['default']
+    USelectMenu: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/SelectMenu.vue')['default']
     USlideover: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Slideover.vue')['default']
     UTextarea: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Textarea.vue')['default']
   }

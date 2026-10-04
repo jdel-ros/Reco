@@ -16,6 +16,11 @@ const shuffling = ref(false)
 const rollCover = ref(null)
 const search = ref('')
 const isMobile = ref(false)
+const genres = ref([])
+const genreLinks = ref([])
+const selectedGenres = ref([])
+const filterOpen = ref(false)
+
 let linkReady = false
 let mq
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -44,6 +49,12 @@ onMounted(async () => {
 	isMobile.value = mq.matches
 	mq.addEventListener('change', updateMobile)
 	linkReady = true
+	const [g, gl] = await Promise.all([
+		supabase.from('genres').select('*'),
+		supabase.from('recommendation_genres').select('recommendation_id, genre_id'),
+	])
+	genres.value = (g.data ?? []).sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+	genreLinks.value = gl.data ?? []
 })
 
 let urlTimer
@@ -118,12 +129,30 @@ function onKey(e) {
 }
 
 
+const usedGenres = computed(() => {
+	const used = new Set(genreLinks.value.map((l) => l.genre_id))
+	return genres.value.filter((g) => used.has(g.id))
+})
+
+const recoIdsInSelection = computed(() => {
+	const ids = new Set(selectedGenres.value)
+	return new Set(genreLinks.value.filter((l) => ids.has(l.genre_id)).map((l) => l.recommendation_id))
+})
+
 const filtered = computed(() => {
 	const q = norm(search.value.trim())
+	const byGenre = selectedGenres.value.length > 0
 	return recos.value
 		.map((r, i) => ({ ...r, i }))
-		.filter((r) => !q || norm(r.title).includes(q) || norm(r.artist).includes(q))
+		.filter((r) => (!byGenre || recoIdsInSelection.value.has(r.id))
+			&& (!q || norm(r.title).includes(q) || norm(r.artist).includes(q)))
 })
+
+function toggleGenre(id) {
+	selectedGenres.value = selectedGenres.value.includes(id)
+		? selectedGenres.value.filter((g) => g !== id)
+		: [...selectedGenres.value, id]
+}
 
 const ease = (x) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2)
 
@@ -193,31 +222,56 @@ watch(frontReco, (r) => {
 	<div class="scroller" :style="{ height: scrollerHeight }">
 		<div v-if="menuOpen === false">
 			<UButton icon="i-lucide-shuffle" color="neutral" variant="subtle" aria-label="Reco aléatoire"
-				class="fixed top-4 right-16 z-10" :ui="{ leadingIcon: shuffling ? 'animate-spin' : '' }" @click="randomReco" />
+				class="fixed top-4 right-16 z-10" :ui="{ leadingIcon: shuffling ? 'animate-spin' : '' }"
+				@click="randomReco" />
 			<UButton :icon="copied ? 'i-lucide-check' : 'i-lucide-link'" color="neutral" variant="subtle"
 				aria-label="Copier le lien" class="fixed top-4 right-28 z-10" @click="copyLink" />
 			<UButton icon="i-lucide-menu" color="neutral" variant="subtle" aria-label="Menu"
 				class="fixed top-4 right-4 z-10" @click="menuOpen = true" />
 		</div>
 		<p v-if="!(isMobile && menuOpen)" class="counter">{{ idx + 1 }} / {{ recos.length }}</p>
-		<USlideover v-model:open="menuOpen" side="right" title="Les recos" description="Choisis une reco">
+		<USlideover v-model:open="menuOpen" side="right" title="Menu" description="Liste des recos"
+			:ui="{ header: 'hidden', title: 'sr-only', description: 'sr-only' }">
 			<template #body>
-				<UInput v-model="search" icon="i-lucide-search" placeholder="Titre ou artiste" class="w-full mb-3" />
-
+				<div class="sticky top-0 z-10 bg-default pb-3">
+					<div class="flex gap-2">
+						<UInput v-model="search" icon="i-lucide-search" placeholder="Titre ou artiste" class="flex-1" />
+						<UButton icon="i-lucide-list-filter"
+							:label="selectedGenres.length ? String(selectedGenres.length) : undefined"
+							:color="selectedGenres.length ? 'primary' : 'neutral'" variant="subtle"
+							aria-label="Filtrer par style" @click="filterOpen = !filterOpen" />
+						<UButton icon="i-lucide-x" color="neutral" variant="ghost" aria-label="Fermer"
+							@click="menuOpen = false" />
+					</div>
+					<div v-if="filterOpen" class="flex flex-wrap gap-2 mt-3">
+						<button v-for="g in usedGenres" :key="g.id" class="px-3 py-1 rounded-full border text-sm"
+							:class="selectedGenres.includes(g.id)
+								? 'bg-primary text-inverted border-primary'
+								: 'border-default text-muted hover:bg-elevated'"
+							@click="toggleGenre(g.id)">
+							{{ g.name }}
+						</button>
+						<button v-if="selectedGenres.length" class="px-3 py-1 text-sm text-muted underline"
+							@click="selectedGenres = []">
+							Effacer
+						</button>
+						<p v-if="!usedGenres.length" class="text-sm text-muted">Aucun style pour l'instant.</p>
+					</div>
+				</div>
 				<button v-for="r in filtered" :key="r.id"
 					class="flex w-full items-center gap-3 p-2 rounded-lg text-left hover:bg-elevated"
 					:class="{ 'bg-elevated': r.i === idx }" @click="goTo(r.i)">
 					<img :src="r.cover_url" :alt="r.title" class="size-12 rounded object-cover" />
 					<p class="truncate">{{ r.artist }}</p>
 				</button>
-
 				<p v-if="!filtered.length" class="text-muted">Aucune reco trouvée.</p>
 			</template>
 		</USlideover>
 		<div v-if="current" class="stage" :style="{ '--bg-a': bg.a, '--bg-b': bg.b }">
 			<div class="card" :style="{ transform: `scale(${scale}) rotateY(${flip}deg)` }">
 				<div class="face front" @click="flipToCard">
-					<img :src="(shuffling ? rollCover : frontReco).cover_url" :alt="frontReco.title" :class="{ rolling: shuffling }" />				
+					<img :src="(shuffling ? rollCover : frontReco).cover_url" :alt="frontReco.title"
+						:class="{ rolling: shuffling }" />
 				</div>
 				<div class="face back">
 					<img v-if="current.cover_url" :src="current.cover_url" :alt="current.title" class="thumb" />
@@ -285,6 +339,7 @@ watch(frontReco, (r) => {
 	box-shadow: 0 20px 60px rgb(0 0 0 / 0.6);
 	transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s;
 }
+
 .front img.rolling {
 	filter: blur(3px);
 	transform: scale(0.96);
@@ -315,6 +370,8 @@ watch(frontReco, (r) => {
 
 .desc {
 	flex: 1;
+	white-space: pre-line;
+	overflow-wrap: anywhere;
 }
 
 .hint {
