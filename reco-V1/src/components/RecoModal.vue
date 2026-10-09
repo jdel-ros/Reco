@@ -43,6 +43,19 @@ const toLocalInput = (iso) => {
 	return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 }
 
+async function defaultDate() {
+	const { data } = await supabase
+		.from('recommendations')
+		.select('published_at')
+		.order('published_at', { ascending: false })
+		.limit(1)
+	const last = data?.[0]?.published_at
+	if (!last) return ''
+	const d = new Date(last)
+	d.setDate(d.getDate() + 1)
+	return d > new Date() ? toLocalInput(d.toISOString()) : ''
+}
+
 function payload(cover_url) {
 	const { published_at, ...rest } = form.value
 	const body = { ...rest, cover_url }
@@ -70,10 +83,13 @@ watch(open, (isOpen) => {
 		}
 		currentCover.value = r.cover_url
 		loadRecoGenres(r.id)
-	} else {
-		form.value = emptyForm()
-		currentCover.value = null
-	}
+		} else {
+			form.value = emptyForm()
+			currentCover.value = null
+			defaultDate().then((v) => {
+				if (!props.reco && !form.value.published_at) form.value.published_at = v
+			})
+		}
 })
 
 async function uploadCover() {
