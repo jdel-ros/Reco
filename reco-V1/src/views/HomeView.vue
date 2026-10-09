@@ -6,7 +6,7 @@ import { getPalette } from '@/lib/palette'
 
 const route = useRoute()
 const router = useRouter()
-const PER = 2 // hauteur de scroll par reco, en écrans
+const PER = 3 // hauteur de scroll par reco, en écrans
 const bg = ref({ a: '#141210', b: '#141210' })
 const recos = ref([])
 const progress = ref(0)
@@ -167,6 +167,12 @@ const flip = computed(() => {
 const scale = computed(() => 0.5 + 0.5 * Math.sin((Math.PI * flip.value) / 360))
 
 const current = computed(() => recos.value[idx.value])
+
+const dateLabel = computed(() => {
+	const d = current.value?.published_at
+	return d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+})
+
 const frontReco = computed(() => (t.value >= 0.5 ? recos.value[idx.value + 1] ?? current.value : current.value))
 
 const scrollerHeight = computed(() => `${((recos.value.length - 1) * PER + PER * 0.65 + 1) * 100}vh`)
@@ -198,7 +204,19 @@ const activeSrc = computed(() => {
 	const l = links.value.find((l) => l.key === active.value)
 	return l ? embed(l.key, l.url) : null
 })
-const playerHeight = computed(() => (current.value?.type === 'track' ? 152 : 352))
+const HEIGHTS = {
+	spotify: { track: 80, other: 352 },
+	deezer: { track: 150, other: 300 },
+	apple: { track: 175, other: 450 },
+}
+
+const isTrackSrc = computed(() => /\/track\/|\/song\/|[?&]i=/.test(activeSrc.value ?? ''))
+
+const playerHeight = computed(() => {
+	const h = HEIGHTS[active.value]
+	if (!h) return 152
+	return isTrackSrc.value ? h.track : h.other
+})
 
 function toggle(key) {
 	active.value = active.value === key ? null : key
@@ -274,6 +292,7 @@ watch(frontReco, (r) => {
 						:class="{ rolling: shuffling }" />
 				</div>
 				<div class="face back">
+					<span class="date">{{ dateLabel }}</span>
 					<img v-if="current.cover_url" :src="current.cover_url" :alt="current.title" class="thumb" />
 					<h1>{{ current.title }}</h1>
 					<p class="artist">{{ current.artist }}</p>
@@ -427,4 +446,14 @@ watch(frontReco, (r) => {
 	font-variant-numeric: tabular-nums;
 	letter-spacing: 0.1em;
 }
+
+.date {
+	position: absolute;
+	top: 1.25rem;
+	right: 1.5rem;
+	font-size: 0.75rem;
+	letter-spacing: 0.05em;
+	color: var(--text-muted);
+}
+
 </style>

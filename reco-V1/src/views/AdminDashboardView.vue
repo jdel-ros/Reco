@@ -24,6 +24,9 @@ const filtered = computed(() => {
 	return recos.value.filter((r) => norm(r.title).includes(q) || norm(r.artist).includes(q))
 })
 
+const fmt = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+const isToday = (d) => new Date(d).toDateString() === new Date().toDateString()
+
 async function loadRecos() {
 	const { data, error } = await supabase
 		.from('recommendations')
@@ -91,13 +94,16 @@ async function home() {
 		<UInput v-model="search" icon="i-lucide-search" placeholder="Rechercher un titre ou un artiste"
 			class="w-full sm:w-1/3 mx-auto mb-4 block" />
 		<div class="div-card">
-			<UCard v-for="r in filtered" :key="r.id" class="card-reco"
+			<UCard v-for="r in recos" :key="r.id" class="card-reco" :class="{ 'card-today': isToday(r.published_at) }"
 				:ui="{ root: 'flex flex-col h-full', body: 'flex-1 pb-3! sm:pb-3!' }">
 				<img v-if="r.cover_url" :src="r.cover_url" :alt="r.title"
 					class="aspect-square object-cover rounded" />
 				<h3 class="title">{{ r.title }}</h3>
 				<p class="artist">{{ r.artist }}</p>
-				<template #footer>
+				<p class="date">
+					{{ fmt(r.published_at) }}
+					<UBadge v-if="isToday(r.published_at)" label="Aujourd'hui" size="sm" variant="subtle" class="ml-2" />
+				</p>				<template #footer>
 					<div class="flex gap-2">
 						<UButton icon="i-lucide-pencil" color="neutral" variant="subtle" class="flex-1 justify-center" @click="openEdit(r)" />
 						<UButton icon="i-lucide-trash-2" color="error" variant="subtle" class="flex-1 justify-center" @click="remove(r)" />
@@ -129,5 +135,13 @@ async function home() {
 	grid-template-columns: repeat(auto-fill, minmax(12em, 1fr));
 	gap: 1em;
 	margin: 0 2em;
+}
+.date {
+	margin-top: 0.2em;
+	font-size: x-small;
+	color: var(--text-muted);
+}
+.card-today {
+	outline: 1px solid var(--accent);
 }
 </style>

@@ -7,7 +7,7 @@ const props = defineProps({ reco: Object })
 const emit = defineEmits(['saved'])
 const open = defineModel('open')
 
-const emptyForm = () => ({ title: '', artist: '', description: '', type: 'track', spotify_url: '', deezer_url: '', apple_url: '' })
+const emptyForm = () => ({ title: '', artist: '', description: '', type: 'track', spotify_url: '', deezer_url: '', apple_url: '', published_at: ''})
 const itemsType = [
 	{ label: 'Musique', value: 'track' },
 	{ label: 'Album', value: 'album' },
@@ -37,6 +37,19 @@ async function loadRecoGenres(recoId) {
 	genreIds.value = (data ?? []).map((l) => l.genre_id)
 }
 
+const toLocalInput = (iso) => {
+	if (!iso) return ''
+	const d = new Date(iso)
+	return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+}
+
+function payload(cover_url) {
+	const { published_at, ...rest } = form.value
+	const body = { ...rest, cover_url }
+	if (published_at) body.published_at = new Date(published_at).toISOString()
+	return body
+}
+
 watch(open, (isOpen) => {
 	if (!isOpen) return
 	message.value = ''
@@ -53,6 +66,7 @@ watch(open, (isOpen) => {
 			spotify_url: r.spotify_url ?? '',
 			deezer_url: r.deezer_url ?? '',
 			apple_url: r.apple_url ?? '',
+			published_at: toLocalInput(r.published_at),
 		}
 		currentCover.value = r.cover_url
 		loadRecoGenres(r.id)
@@ -99,7 +113,7 @@ async function save() {
 		if (props.reco) {
 			const { data, error } = await supabase
 				.from('recommendations')
-				.update({ ...form.value, cover_url })
+				.update(payload(cover_url))
 				.eq('id', props.reco.id)
 				.select()
 			if (error) throw error
@@ -108,7 +122,7 @@ async function save() {
 		} else {
 			const { data, error } = await supabase
 				.from('recommendations')
-				.insert({ ...form.value, cover_url })
+				.insert(payload(cover_url))
 				.select()
 				.single()
 			if (error) throw error
@@ -144,6 +158,9 @@ async function save() {
 				<FloatInput v-model="form.spotify_url" label="Lien Spotify" class="input input-link" size="md" />
 				<FloatInput v-model="form.deezer_url" label="Lien Deezer" class="input" size="md" />
 				<FloatInput v-model="form.apple_url" label="Lien Apple Music" class="input" size="md" />
+				<label class="date-label">Date de publication</label>
+				<UInput v-model="form.published_at" type="datetime-local" class="input" size="md" />
+				<p class="date-hint">Laisse vide pour publier tout de suite. Une date future programme la reco.</p>
 				<div class="div-cover">
 					<img v-if="currentCover" :src="currentCover" alt="cover actuelle" width="80" class="cover" />
 					<UFileUpload v-model="file" variant="button" accept="image/*" class="w-1/3" />
@@ -189,5 +206,14 @@ async function save() {
 .div-btn {
 	justify-content: center;
 	align-items: center;
+}
+.date-label {
+	font-size: small;
+	margin-bottom: 0.3em;
+}
+.date-hint {
+	font-size: small;
+	color: var(--text-muted);
+	margin-bottom: 0.6em;
 }
 </style>
