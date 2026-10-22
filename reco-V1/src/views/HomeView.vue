@@ -40,6 +40,8 @@ onMounted(async () => {
 
 	window.addEventListener('scroll', onScroll, { passive: true })
 	window.addEventListener('keydown', onKey)
+	window.addEventListener('wheel', cancelAnim, { passive: true })
+	window.addEventListener('touchstart', cancelAnim, { passive: true })
 
 	const i = recos.value.findIndex((r) => r.id === route.query.reco)
 	await nextTick()
@@ -80,6 +82,8 @@ async function copyLink() {
 onUnmounted(() => {
 	window.removeEventListener('scroll', onScroll)
 	window.removeEventListener('keydown', onKey)
+	window.removeEventListener('wheel', cancelAnim)
+	window.removeEventListener('touchstart', cancelAnim)
 	mq?.removeEventListener('change', updateMobile)
 	clearTimeout(bgTimer)
 	clearTimeout(urlTimer)
@@ -115,6 +119,39 @@ function onScroll() {
 	})
 }
 
+const busy = ref(false)
+let cancelled = false
+const cancelAnim = () => { cancelled = true }
+
+function animateScroll(from, to, duration) {
+	return new Promise((resolve) => {
+		const start = performance.now()
+		const step = (now) => {
+			if (cancelled) return resolve()
+			const k = Math.min((now - start) / duration, 1)
+			window.scrollTo({ top: from + (to - from) * k, behavior: 'instant' })
+			k < 1 ? requestAnimationFrame(step) : resolve()
+		}
+		requestAnimationFrame(step)
+	})
+}
+
+async function nextReco() {
+	if (busy.value || shuffling.value || idx.value >= recos.value.length - 1) return
+	busy.value = true
+	cancelled = false
+
+	const H = window.innerHeight * PER
+	const i = idx.value
+	const p = t.value >= 0.35 && t.value < 0.65 ? i + 0.65 : progress.value
+
+	await animateScroll(p * H, (i + 1) * H, Math.max(600, 2400 * (i + 1 - p)))
+	if (!cancelled) await sleep(100)
+	if (!cancelled) await animateScroll((i + 1) * H, (i + 1.4) * H, 900)
+
+	busy.value = false
+}
+
 function goTo(i) {
 	window.scrollTo({ top: i * window.innerHeight * PER, behavior: 'instant' })
 	menuOpen.value = false
@@ -126,6 +163,7 @@ function onKey(e) {
 	if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return
 	if (e.key === 'ArrowRight' && idx.value < recos.value.length - 1) goTo(idx.value + 1)
 	if (e.key === 'ArrowLeft' && idx.value > 0) goTo(idx.value - 1)
+	if (menuOpen.value || shuffling.value || busy.value) return
 }
 
 
@@ -249,9 +287,10 @@ watch(frontReco, (r) => {
 		</div>
 		<p v-if="!(isMobile && menuOpen)" class="counter">{{ idx + 1 }} / {{ recos.length }}</p>
 		<USlideover v-model:open="menuOpen" side="right" title="Menu" description="Liste des recos"
-			:ui="{ header: 'hidden', title: 'sr-only', description: 'sr-only' }">
+			:content="{ onOpenAutoFocus: (e) => isMobile && e.preventDefault() }"
+			:ui="{ header: 'hidden', title: 'sr-only', description: 'sr-only', body: 'pt-0 sm:pt-0' }">
 			<template #body>
-				<div class="sticky top-0 z-10 bg-default pb-3">
+				<div class="sticky top-0 z-10 bg-default -mx-4 px-4 pt-4 pb-3 sm:-mx-6 sm:px-6 sm:pt-6">
 					<div class="flex gap-2">
 						<UInput v-model="search" icon="i-lucide-search" placeholder="Titre ou artiste" class="flex-1" />
 						<UButton icon="i-lucide-list-filter"
@@ -301,6 +340,12 @@ watch(frontReco, (r) => {
 						<button v-for="l in links" :key="l.key" class="p-btn" :class="{ on: active === l.key }"
 							@click="toggle(l.key)">
 							<UIcon :name="l.icon" class="size-6" />
+						</button>
+
+						<button class="p-btn ml-auto" aria-label="Reco suivante"
+							:disabled="busy || shuffling || idx >= recos.length - 1" @click="nextReco">
+							<UIcon :name="busy ? 'i-lucide-loader-circle' : 'i-lucide-arrow-right'" class="size-6"
+								:class="{ 'animate-spin': busy }" />
 						</button>
 					</div>
 					<Transition name="player">
@@ -456,4 +501,8 @@ watch(frontReco, (r) => {
 	color: var(--text-muted);
 }
 
+.p-btn:disabled {
+	opacity: 0.35;
+	pointer-events: none;
+}
 </style>
